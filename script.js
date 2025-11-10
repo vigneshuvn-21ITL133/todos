@@ -198,7 +198,7 @@ class TaskController {
     this.taskManager.addTask(title, description, category, status, priority);
     const filteredTasks = this.taskManager.getFilteredTasks();
     this.renderManager.mainRender(filteredTasks);
-    // new UIController(this); 
+    UIController(this); 
   }
 
   filterTasks(searchKeyword, statusFilter, priorityFilter) {
@@ -208,7 +208,7 @@ class TaskController {
 
     const filteredTasks = this.taskManager.getFilteredTasks();
     this.renderManager.mainRender(filteredTasks);
-    // new UIController(this); 
+    new UIController(this); 
     }
 }
 
