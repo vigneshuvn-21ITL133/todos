@@ -43,26 +43,18 @@ class TaskManager {
     this.statusFilter = "all";
     this.priorityFilter = "all";
   }
-  search(keyword) {
-    return this.tasks.filter((c) =>
-      c.task.description.includes(keyword)
-    );
-  }
-
-  status(check) {
-    return this.tasks.filter((c) => c.task.status === check);
-  }
-
-  priority(level) {
-    return this.tasks.filter((c) => c.task.priority === level);
-  }
 
   getFilteredTasks() {
     return this.tasks.filter((c) => {
       const t = c.task;
-      const matchSearch =this.searchKeyword === "" || t.title.includes(this.searchKeyword) || t.description.includes(this.searchKeyword);
-      const matchStatus = this.statusFilter === "all" || t.status === this.statusFilter;
-      const matchPriority = this.priorityFilter === "all" || t.priority === this.priorityFilter;
+      const matchSearch =
+        this.searchKeyword === "" ||
+        t.title.toLowerCase().includes(this.searchKeyword.toLowerCase()) ||
+        t.description.toLowerCase().includes(this.searchKeyword.toLowerCase());
+      const matchStatus =
+        this.statusFilter === "all" || t.status === this.statusFilter;
+      const matchPriority =
+        this.priorityFilter === "all" || t.priority === this.priorityFilter;
 
       return matchSearch && matchStatus && matchPriority;
     });
@@ -73,25 +65,21 @@ class TaskManager {
     this.tasks.push(newTask);
     return newTask;
   }
-
-  getTasks() {
-    return this.tasks;
-  }
 }
 
-class renderManager {
-
+class RenderManager {
   renderHeading() {
     return `<div class="heading"><h2>Task Manager</h2></div>`;
   }
 
-  renderContainer() {
-    return `<div class="container">
-      <div class="child"><p>TOTAL TASK</p><h1 id="total">0</h1></div>
-      <div class="child"><p>COMPLETE</p><h1 id="complete">0</h1></div>
-      <div class="child"><p>PENDING</p><h1 id="pending">0</h1></div>
-      <div class="child"><p>HIGH PRIORITY</p><h1 id="heat">0</h1></div>
-    </div>`;
+  renderContainer(total, complete, pending, highPriority) {
+    return `
+      <div class="container">
+        <div class="child"><p>TOTAL TASKS</p><h1 id="total" style="color:blue; font-size:30px">${total}</h1></div>
+        <div class="child"><p>COMPLETE</p><h1 id="complete" style="color:green; font-size:30px">${complete}</h1></div>
+        <div class="child"><p>PENDING</p><h1 id="pending"   style="color:orange; font-size:30px">${pending}</h1></div>
+        <div class="child"><p>HIGH PRIORITY</p><h1 id="high" style="color:red; font-size:30px">${highPriority}</h1></div>
+      </div>`;
   }
 
   renderForm() {
@@ -153,8 +141,9 @@ class renderManager {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+          <button id="btn-filter" class="btn1">Filter</button>
         </div>
-        <div id="task-list-output"></div>
+        <div id="task-output"></div>
       </div>`;
   }
 
@@ -172,41 +161,104 @@ class renderManager {
         <h3>${title}</h3>
         <p>${description}</p>
         <div class="tags1">
-          <div class="child-tag">${category}</div>
+          <div class="child-tag ">${category}</div>
           <div class="child-tag child-color-${priority}">${priority}</div>
           <div class="child-tag">${status}</div>
         </div>
       </div>`;
   }
-   mainRender(taskManager) {
-    document.getElementById("app-root").innerHTML =
+
+  mainRender(filteredTasks) {
+    const renderedList = filteredTasks.map((list) => this.renderTaskList(list.task)).join("");
+
+
+    const total = filteredTasks.length;
+    const complete = filteredTasks.filter((count) => count.task.status === "complete").length;
+    const pending = filteredTasks.filter((count) => count.task.status === "pending").length;
+    const highPriority = filteredTasks.filter((count) => count.task.priority === "high").length;
+
+    const ui =
       this.renderHeading() +
-      this.renderContainer() +
+      this.renderContainer(total, complete, pending, highPriority) +
       this.renderForm() +
-      this.renderTaskFilter();
-  
-  
-    const filteredTasks = taskManager.getFilteredTasks();
-    this.renderList(filteredTasks);
-  }
+      this.renderTaskFilter() +
+      renderedList;
 
-  renderList(filteredTasks) {
-    const output = document.getElementById("task-output");
-    output.innerHTML = filteredTasks
-      .map((value) => this.renderTaskList(value.task))
-      .join("");
+    document.getElementById("app-root").innerHTML = ui;
   }
-
 }
 
 class TaskController {
-  constructor(taskManager) {
+  constructor(taskManager, renderManager) {
     this.taskManager = taskManager;
+    this.renderManager = renderManager;
   }
-addtask(title,description,category,priority){
-    this.taskManager.addTask(title,description,category,priority)
-    this.renderList(this.taskManager.getFilteredTasks());
+
+  addTask(title, description, category, status, priority) {
+    this.taskManager.addTask(title, description, category, status, priority);
+    const filteredTasks = this.taskManager.getFilteredTasks();
+    this.renderManager.mainRender(filteredTasks);
+    // new UIController(this); 
+  }
+
+  filterTasks(searchKeyword, statusFilter, priorityFilter) {
+    this.taskManager.searchKeyword = searchKeyword;
+    this.taskManager.statusFilter = statusFilter;
+    this.taskManager.priorityFilter = priorityFilter;
+
+    const filteredTasks = this.taskManager.getFilteredTasks();
+    this.renderManager.mainRender(filteredTasks);
+    // new UIController(this); 
+    }
+}
+
+const taskManager = new TaskManager();
+const renderManager = new RenderManager();
+const controller = new TaskController(taskManager, renderManager);
+const filteredTasks = taskManager.getFilteredTasks();
+renderManager.mainRender(filteredTasks);
+
+class UIController {
+  constructor(controller) {
+    this.controller = controller;
+
+    const addBtn = document.getElementById("btn-add");
+    const filterBtn = document.getElementById("btn-filter");
+
+    if (addBtn) {
+      addBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.handleAddtask();
+      });
+    }
+
+    if (filterBtn) {
+      filterBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.handleFiltertasks();
+      });
+    }
+  }
+
+  handleAddtask() {
+    const title = document.getElementById("title").value.trim();
+    const category = document.getElementById("category").value;
+    const description = document.getElementById("description").value.trim();
+    const priority = document.getElementById("add-priority").value;
+    const status = document.getElementById("status").value;
+
+    this.controller.addTask(title, description, category, status, priority);
+    document.getElementById("form-input").reset();
+  }
+
+  handleFiltertasks() {
+    const searchKeyword = document.getElementById("search").value.trim();
+    const statusFilter = document.getElementById("status-filter").value;
+    const priorityFilter = document.getElementById("priority-filter").value;
+
+    this.controller.filterTasks(searchKeyword, statusFilter, priorityFilter);
   }
 }
-const controller = new TaskController(manager);
 
+
+new UIController(controller);
